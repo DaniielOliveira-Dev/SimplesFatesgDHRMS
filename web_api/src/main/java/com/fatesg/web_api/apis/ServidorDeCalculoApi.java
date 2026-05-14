@@ -19,12 +19,27 @@ public class ServidorDeCalculoApi implements ClienteDeCalculoFolhaInterface {
     private PrintWriter saida;
     private BufferedReader entrada;
 
+    // controla alternância entre os dois servidores
+    private static boolean usarPrimeiroServidor = true;
+
     public ServidorDeCalculoApi() {
         super();
     }
 
     private void conectar() throws IOException {
-        this.cliente = new Socket(JsonRPCConfig.JSON_RPC_SERVER_HOST, (int) JsonRPCConfig.JSON_RPC_SERVER_PORT);
+        short porta;
+
+        // alterna entre os dois servidores configurados
+        if (usarPrimeiroServidor) {
+            porta = JsonRPCConfig.JSON_RPC_SERVER_PORT;
+        } else {
+            porta = JsonRPCConfig.JSON_RPC_SERVER_PORT2;
+        }
+
+        // inverte para a próxima requisição
+        usarPrimeiroServidor = !usarPrimeiroServidor;
+
+        this.cliente = new Socket(JsonRPCConfig.JSON_RPC_SERVER_HOST, porta);
         this.saida = new PrintWriter(cliente.getOutputStream(), true);
         this.entrada = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
     }
@@ -40,6 +55,7 @@ public class ServidorDeCalculoApi implements ClienteDeCalculoFolhaInterface {
 
     private JsonRpcResponse<Object> enviar(JsonRpcRequest request) throws IOException, Exception {
         conectar();
+
         if (!cliente.isConnected())
             throw new IOException("Socket cliente não está conectado!");
 
@@ -48,15 +64,17 @@ public class ServidorDeCalculoApi implements ClienteDeCalculoFolhaInterface {
 
         String resJson = "";
         String retorno;
+
         while ((retorno = this.entrada.readLine()) != null) {
             resJson += retorno;
         }
 
         @SuppressWarnings("unchecked")
-        JsonRpcResponse<Object> response = (JsonRpcResponse<Object>) new Gson().fromJson(resJson,
-                JsonRpcResponse.class);
+        JsonRpcResponse<Object> response =
+                (JsonRpcResponse<Object>) new Gson().fromJson(resJson, JsonRpcResponse.class);
 
         fecharConexao();
+
         return response;
     }
 
@@ -77,14 +95,15 @@ public class ServidorDeCalculoApi implements ClienteDeCalculoFolhaInterface {
                 throw new Exception(response.error.message);
             }
 
-            if(response.result == null)
+            if (response.result == null) {
                 throw new Exception("Resultado nulo");
+            }
 
             var parser = new Gson();
             String retorno = parser.toJson(response.result);
-            FolhaDto dto = parser.fromJson(retorno, FolhaDto.class);
-            return dto;
-            
+
+            return parser.fromJson(retorno, FolhaDto.class);
+
         } catch (IOException e) {
             System.err.println("Erro de IOException no calcularFolhaDePagamento: " + e.getMessage());
             e.printStackTrace();
@@ -98,7 +117,6 @@ public class ServidorDeCalculoApi implements ClienteDeCalculoFolhaInterface {
 
     @Override
     public FolhaDto calcularFolhaDePagamentoDoDepartamento(String arg0, byte arg1, short arg2) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'calcularFolhaDePagamentoDoDepartamento'");
     }
 
@@ -126,8 +144,8 @@ public class ServidorDeCalculoApi implements ClienteDeCalculoFolhaInterface {
 
             var parser = new Gson();
             String retorno = parser.toJson(response.result);
-            ReciboDto dto = parser.fromJson(retorno, ReciboDto.class);
-            return dto;
+
+            return parser.fromJson(retorno, ReciboDto.class);
 
         } catch (IOException e) {
             System.err.println("Erro de IOException no calcularReciboDePagamento: " + e.getMessage());
@@ -155,7 +173,9 @@ public class ServidorDeCalculoApi implements ClienteDeCalculoFolhaInterface {
             }
 
             Double retorno = (Double) response.result;
-            return (double) retorno;
+
+            return retorno;
+
         } catch (IOException e) {
             System.err.println("Erro de IOException no calcularSalarioLiquido: " + e.getMessage());
             e.printStackTrace();

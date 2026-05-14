@@ -9,7 +9,7 @@ public record DbConfig() {
                         : "root";
         public static final String PASSWORD = System.getenv("FATESG_DB_PASSWORD") != null
                         ? System.getenv("FATESG_DB_PASSWORD")
-                        : "root";
+                        : "03102018";
         public static final String DRIVER = "com.mysql.cj.jdbc.Driver";
         public static final int DEFAULT_LIMIT = 15;
 }
